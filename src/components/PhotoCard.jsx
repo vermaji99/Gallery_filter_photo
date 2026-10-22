@@ -1,25 +1,14 @@
 import React, { useState } from 'react';
 
 /**
- * Derives a performant, high-DPI 4:3 thumbnail URL from the photo's Picsum URL.
- * Preserves the photo's exact identity and avoids downloading multi-megabyte originals.
- */
-function getThumbnailUrl(photo, width = 800, height = 600) {
-  if (photo?.download_url) {
-    return photo.download_url.replace(/\/\d+\/\d+$/, `/${width}/${height}`);
-  }
-  return `https://picsum.photos/id/${photo.id}/${width}/${height}`;
-}
-
-/**
  * PhotoCard Component
  *
- * Demonstrates:
- * - 4:3 Aspect ratio image container
- * - Graceful loading and error states
- * - Accessible, keyboard-operable heart toggle with focus-visible ring
- * - Pure SVG heart icon (active: refined rose, inactive: muted slate/stone)
- * - Restrained editorial styling
+ * Displays an individual photo card:
+ * - 4:3 aspect ratio container with lazy loading
+ * - Resized image using Picsum's dimension format: https://picsum.photos/id/{photo.id}/800/600
+ * - Author name caption
+ * - Accessible heart-shaped favourite toggle button
+ * - Graceful fallback on individual image load failure
  */
 const PhotoCard = React.memo(function PhotoCard({
   photo,
@@ -29,13 +18,14 @@ const PhotoCard = React.memo(function PhotoCard({
   const [isLoaded, setIsLoaded] = useState(false);
   const [hasError, setHasError] = useState(false);
 
-  const thumbnailUrl = getThumbnailUrl(photo, 800, 600);
+  // Requirement 3: Picsum's resized 800x600 image URL format (4:3 aspect ratio)
+  const imageUrl = `https://picsum.photos/id/${photo.id}/800/600`;
 
   return (
     <article className="group bg-white rounded-xl border border-stone-200/80 shadow-xs hover:shadow-md transition-shadow duration-300 overflow-hidden flex flex-col">
-      {/* 4:3 Image Container */}
+      {/* 4:3 Aspect Ratio Container */}
       <div className="relative aspect-[4/3] w-full bg-stone-100 overflow-hidden">
-        {/* Subtle skeleton loader while image loads */}
+        {/* Placeholder skeleton while image decodes */}
         {!isLoaded && !hasError && (
           <div
             className="absolute inset-0 bg-stone-200/70 animate-pulse flex items-center justify-center text-stone-400"
@@ -57,10 +47,10 @@ const PhotoCard = React.memo(function PhotoCard({
           </div>
         )}
 
-        {/* Photo Image */}
+        {/* Resized Photo Image */}
         {!hasError ? (
           <img
-            src={thumbnailUrl}
+            src={imageUrl}
             alt={`Photograph by ${photo.author}`}
             loading="lazy"
             onLoad={() => setIsLoaded(true)}
@@ -70,9 +60,11 @@ const PhotoCard = React.memo(function PhotoCard({
             }`}
           />
         ) : (
+          /* Graceful image error fallback */
           <div
             className="w-full h-full flex flex-col items-center justify-center text-stone-400 p-4 text-center bg-stone-100"
-            aria-label="Image could not be loaded"
+            role="img"
+            aria-label={`Image by ${photo.author} unavailable`}
           >
             <svg
               className="w-6 h-6 mb-1 text-stone-300"
@@ -87,12 +79,12 @@ const PhotoCard = React.memo(function PhotoCard({
                 d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
               />
             </svg>
-            <span className="text-xs text-stone-400">Unavailable</span>
+            <span className="text-xs text-stone-400">Image unavailable</span>
           </div>
         )}
       </div>
 
-      {/* Card Caption & Favourite Action */}
+      {/* Card Caption & Heart Toggle Button */}
       <div className="p-3.5 flex items-center justify-between gap-3 bg-white border-t border-stone-100">
         <div className="min-w-0">
           <p className="text-[11px] uppercase tracking-wider text-stone-400 font-medium">
