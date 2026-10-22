@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 
 const PICSUM_API_URL = 'https://picsum.photos/v2/list?limit=30';
 
@@ -7,15 +7,23 @@ const PICSUM_API_URL = 'https://picsum.photos/v2/list?limit=30';
  *
  * Fetches 30 photos from the Picsum Photos API on component mount.
  *
- * Returns exactly:
+ * Returns:
  * - photos: Array of fetched photo objects
  * - loading: boolean indicating whether fetch is active
  * - error: string describing failure reason, or null if successful
+ * - refetch: function to manually reload the photos collection
  */
 export function useFetchPhotos() {
   const [photos, setPhotos] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [reloadTrigger, setReloadTrigger] = useState(0);
+
+  const refetch = useCallback(() => {
+    setLoading(true);
+    setError(null);
+    setReloadTrigger((count) => count + 1);
+  }, []);
 
   useEffect(() => {
     // AbortController cancels network fetch if component unmounts
@@ -63,7 +71,7 @@ export function useFetchPhotos() {
     return () => {
       controller.abort();
     };
-  }, []); // Empty dependency array ensures request runs only once on mount
+  }, [reloadTrigger]);
 
-  return { photos, loading, error };
+  return { photos, loading, error, refetch };
 }

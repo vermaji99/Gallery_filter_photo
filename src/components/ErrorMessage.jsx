@@ -1,4 +1,4 @@
-export default function ErrorMessage({ error }) {
+export default function ErrorMessage({ error, onRetry }) {
   return (
     <div
       role="alert"
@@ -24,9 +24,19 @@ export default function ErrorMessage({ error }) {
       <h3 className="text-sm font-semibold text-stone-900 mb-1">
         Unable to Load Collection
       </h3>
-      <p className="text-xs text-stone-500 leading-relaxed">
+      <p className="text-xs text-stone-500 leading-relaxed mb-4">
         {error || 'An error occurred while communicating with the photo service.'}
       </p>
+
+      {onRetry && (
+        <button
+          type="button"
+          onClick={onRetry}
+          className="px-4 py-2 text-xs font-medium text-stone-800 bg-stone-100 hover:bg-stone-200 rounded-lg transition-colors cursor-pointer"
+        >
+          Try Again
+        </button>
+      )}
     </div>
   );
 }
