@@ -1,58 +1,58 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 
 const PICSUM_API_URL = 'https://picsum.photos/v2/list?limit=30';
 
 /**
  * Custom Hook: useFetchPhotos
- * Fetches 30 photos from Picsum API on mount.
  *
- * Requirements:
- * - Return: photos, loading, error
- * - Gallery component must use this hook instead of fetching directly
+ * Fetches 30 photos from the Picsum Photos API on component mount.
  *
- * @returns {{ photos: Array, loading: boolean, error: string | null, refetch: Function }}
+ * Returns exactly:
+ * - photos: Array of fetched photo objects
+ * - loading: boolean indicating whether fetch is active
+ * - error: string describing failure reason, or null if successful
  */
 export function useFetchPhotos() {
   const [photos, setPhotos] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [reloadKey, setReloadKey] = useState(0);
-
-  const refetch = useCallback(() => {
-    setLoading(true);
-    setError(null);
-    setReloadKey((prev) => prev + 1);
-  }, []);
 
   useEffect(() => {
-    let isCancelled = false;
-    const abortController = new AbortController();
+    // AbortController cancels network fetch if component unmounts
+    const controller = new AbortController();
 
     async function fetchPhotos() {
       try {
         const response = await fetch(PICSUM_API_URL, {
-          signal: abortController.signal,
+          signal: controller.signal,
         });
 
+        // Verify HTTP status code
         if (!response.ok) {
           throw new Error(
-            `Failed to load photos from server (Status: ${response.status} ${response.statusText})`
+            `Server error: HTTP ${response.status} (${response.statusText || 'Failed to fetch'})`
           );
         }
 
         const data = await response.json();
-        if (!isCancelled) {
-          setPhotos(data);
-          setError(null);
-          setLoading(false);
+
+        // Validate response format
+        if (!Array.isArray(data)) {
+          throw new Error('Received malformed data: expected an array of photos.');
         }
+
+        setPhotos(data);
+        setError(null);
       } catch (err) {
+        // Do not update state if unmounted / aborted
         if (err.name === 'AbortError') return;
 
-        if (!isCancelled) {
-          setError(
-            err.message || 'Unable to connect to Picsum API. Please check your network.'
-          );
+        setError(
+          err.message || 'Unable to connect to the photo service. Please check your network connection.'
+        );
+      } finally {
+        // Always ensure loading finishes if not aborted
+        if (!controller.signal.aborted) {
           setLoading(false);
         }
       }
@@ -61,15 +61,9 @@ export function useFetchPhotos() {
     fetchPhotos();
 
     return () => {
-      isCancelled = true;
-      abortController.abort();
+      controller.abort();
     };
-  }, [reloadKey]);
+  }, []); // Empty dependency array ensures request runs only once on mount
 
-  return {
-    photos,
-    loading,
-    error,
-    refetch,
-  };
+  return { photos, loading, error };
 }

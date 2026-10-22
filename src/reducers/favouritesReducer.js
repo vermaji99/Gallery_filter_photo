@@ -1,52 +1,65 @@
-export const FAVOURITES_STORAGE_KEY = 'celebrare_gallery_favourites';
+export const FAVOURITES_STORAGE_KEY = 'photo_gallery_favourites';
 
 /**
  * Action Types for Favourites Reducer
  */
 export const FAVOURITES_ACTIONS = {
   TOGGLE_FAVOURITE: 'TOGGLE_FAVOURITE',
+  RESTORE_FAVOURITES: 'RESTORE_FAVOURITES',
 };
 
 /**
- * Lazy initializer function for useReducer.
- * Loads previously favourited photo IDs from localStorage.
- * 
- * @returns {string[]} Array of saved favourite photo IDs
+ * Initial empty state before hydration
  */
-export function initFavourites() {
+export const initialFavouritesState = [];
+
+/**
+ * Safely loads and validates stored favourite IDs from localStorage.
+ * Prevents invalid JSON, missing keys, or corrupted types from crashing the application.
+ *
+ * @returns {string[]} Array of valid string IDs
+ */
+export function loadStoredFavourites() {
   try {
-    const stored = localStorage.getItem(FAVOURITES_STORAGE_KEY);
-    if (!stored) return [];
-    const parsed = JSON.parse(stored);
-    return Array.isArray(parsed) ? parsed : [];
+    const raw = localStorage.getItem(FAVOURITES_STORAGE_KEY);
+    if (!raw) return [];
+
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return [];
+
+    // Ensure all stored items are strings to prevent type mismatches
+    return parsed.filter((id) => typeof id === 'string' || typeof id === 'number').map(String);
   } catch (err) {
-    console.error('Failed to retrieve favourites from localStorage:', err);
+    console.warn('Failed to load favourites from localStorage (corrupted data):', err);
     return [];
   }
 }
 
 /**
- * Favourites Reducer
- * Pure function to manage favourites state.
+ * Pure reducer function managing favourite photo IDs.
  *
- * @param {string[]} state - Current array of favourite photo IDs
- * @param {{ type: string, payload: string }} action
- * @returns {string[]} Next array of favourite photo IDs
+ * @param {string[]} state - Current list of favourite photo IDs
+ * @param {{ type: string, payload?: any }} action
+ * @returns {string[]} Next list of favourite photo IDs
  */
 export function favouritesReducer(state, action) {
   switch (action.type) {
     case FAVOURITES_ACTIONS.TOGGLE_FAVOURITE: {
-      const photoId = action.payload;
-      const isAlreadyFav = state.includes(photoId);
+      const id = String(action.payload);
+      const isFav = state.includes(id);
 
-      if (isAlreadyFav) {
-        // Remove from favourites
-        return state.filter((id) => id !== photoId);
+      if (isFav) {
+        return state.filter((existingId) => existingId !== id);
       } else {
-        // Add to favourites
-        return [...state, photoId];
+        return [...state, id];
       }
     }
+
+    case FAVOURITES_ACTIONS.RESTORE_FAVOURITES: {
+      if (!Array.isArray(action.payload)) return state;
+      return action.payload.map(String);
+    }
+
     default:
       return state;
   }

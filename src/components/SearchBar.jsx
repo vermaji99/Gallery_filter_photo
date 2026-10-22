@@ -3,9 +3,9 @@ import React from 'react';
 /**
  * SearchBar Component
  *
- * Wrapped in React.memo so it only re-renders when searchTerm or onSearchChange changes.
- * Because onSearchChange is memoized with useCallback in the parent,
- * toggling favourites in the gallery will NOT trigger unnecessary re-renders of this component.
+ * Memoized with React.memo so it only re-renders when searchTerm or handlers change.
+ * Pair with `useCallback` on `onSearchChange` to prevent unnecessary re-renders when
+ * favourites state updates in the parent component.
  */
 const SearchBar = React.memo(function SearchBar({
   searchTerm,
@@ -13,56 +13,57 @@ const SearchBar = React.memo(function SearchBar({
   onClear,
 }) {
   return (
-    <div className="w-full max-w-xl mx-auto mb-8">
+    <div className="w-full max-w-lg mx-auto">
       <div className="relative flex items-center">
-        {/* Search magnifying glass icon */}
-        <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+        {/* Minimal Search Icon */}
+        <div
+          className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-stone-400"
+          aria-hidden="true"
+        >
           <svg
-            className="w-5 h-5"
+            className="w-4 h-4"
             fill="none"
             viewBox="0 0 24 24"
             stroke="currentColor"
-            aria-hidden="true"
+            strokeWidth={2}
           >
             <path
               strokeLinecap="round"
               strokeLinejoin="round"
-              strokeWidth={2}
-              d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+              d="M21 21l-4.35-4.35M17 11a6 6 0 11-12 0 6 6 0 0112 0z"
             />
           </svg>
         </div>
 
-        {/* Search input */}
+        {/* Search Input */}
         <input
+          id="photographer-search"
           type="text"
           value={searchTerm}
           onChange={onSearchChange}
-          placeholder="Search photos by author name..."
-          className="w-full pl-11 pr-10 py-3 text-sm sm:text-base bg-white border border-slate-200 rounded-xl shadow-sm placeholder-slate-400 focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 transition-all text-slate-800"
-          aria-label="Search photos by author name"
+          placeholder="Search photographers..."
+          autoComplete="off"
+          spellCheck="false"
+          className="w-full pl-10 pr-9 py-2.5 text-sm bg-white border border-stone-200 rounded-lg text-stone-900 placeholder-stone-400 focus:outline-none focus:border-stone-900 focus:ring-1 focus:ring-stone-900 transition-colors shadow-2xs"
+          aria-label="Search photographers by name"
         />
 
-        {/* Clear search button */}
+        {/* Accessible Clear Search Button */}
         {searchTerm && (
           <button
             type="button"
             onClick={onClear}
-            className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-slate-400 hover:text-slate-600 transition-colors cursor-pointer"
-            aria-label="Clear search"
+            aria-label="Clear search query"
+            className="absolute inset-y-0 right-0 pr-3 flex items-center text-stone-400 hover:text-stone-700 transition-colors cursor-pointer"
           >
             <svg
-              className="w-5 h-5"
+              className="w-4 h-4"
               fill="none"
               viewBox="0 0 24 24"
               stroke="currentColor"
+              strokeWidth={2}
             >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M6 18L18 6M6 6l12 12"
-              />
+              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
             </svg>
           </button>
         )}

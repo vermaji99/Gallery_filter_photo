@@ -2,7 +2,8 @@ import { useState, useReducer, useEffect, useCallback, useMemo } from 'react';
 import { useFetchPhotos } from '../hooks/useFetchPhotos';
 import {
   favouritesReducer,
-  initFavourites,
+  initialFavouritesState,
+  loadStoredFavourites,
   FAVOURITES_ACTIONS,
   FAVOURITES_STORAGE_KEY,
 } from '../reducers/favouritesReducer';
@@ -14,28 +15,28 @@ import ErrorMessage from './ErrorMessage';
 /**
  * Gallery Component
  *
- * Core component adhering strictly to the assignment specifications:
- * 1. Uses custom hook `useFetchPhotos` (returns: photos, loading, error)
- * 2. Manages favourites using `useReducer` with localStorage persistence
- * 3. Uses `useCallback` for search filter handler
- * 4. Uses `useMemo` to compute filtered photos list in real-time
- * 5. Responsive grid: Desktop 4 cols, Tablet 2 cols, Mobile 1 col
+ * Core architectural coordinator adhering strictly to the assignment specifications:
+ * 1. Consumes data via the custom hook `useFetchPhotos` ({ photos, loading, error })
+ * 2. Manages favourite photo IDs via `useReducer` with safe localStorage persistence
+ * 3. Memoizes search filter handler with `useCallback`
+ * 4. Derives filtered photo array with `useMemo`
+ * 5. Renders a responsive grid (Desktop: 4 cols, Tablet: 2 cols, Mobile: 1 col)
  */
 export default function Gallery() {
-  // Requirement 6: Use useFetchPhotos custom hook
-  const { photos, loading, error, refetch } = useFetchPhotos();
+  // 1. Fetch photos from remote API via custom hook
+  const { photos, loading, error } = useFetchPhotos();
 
-  // Search filter query state
+  // Search input state
   const [searchTerm, setSearchTerm] = useState('');
 
-  // Requirement 5: Manage favourites list using useReducer (not useState)
+  // 2. Manage favourite photo IDs using useReducer with lazy initialization
   const [favourites, dispatch] = useReducer(
     favouritesReducer,
-    [],
-    initFavourites
+    initialFavouritesState,
+    loadStoredFavourites
   );
 
-  // Requirement 5: Persist favourites to localStorage across page refreshes
+  // Synchronize favourites to localStorage whenever state changes
   useEffect(() => {
     try {
       localStorage.setItem(
@@ -43,21 +44,21 @@ export default function Gallery() {
         JSON.stringify(favourites)
       );
     } catch (err) {
-      console.error('Failed to persist favourites to localStorage:', err);
+      console.warn('Failed to synchronize favourites to localStorage:', err);
     }
   }, [favourites]);
 
-  // Requirement 7: useCallback on search filter handler
+  // 3. useCallback memoizes search input change handler
   const handleSearchChange = useCallback((e) => {
     setSearchTerm(e.target.value);
   }, []);
 
-  // Handler to clear search input
+  // Memoized search clear handler
   const handleClearSearch = useCallback(() => {
     setSearchTerm('');
   }, []);
 
-  // Memoized toggle handler for dispatching favourite action
+  // Memoized toggle favourite action dispatcher
   const handleToggleFavourite = useCallback((photoId) => {
     dispatch({
       type: FAVOURITES_ACTIONS.TOGGLE_FAVOURITE,
@@ -65,62 +66,64 @@ export default function Gallery() {
     });
   }, []);
 
-  // Requirement 7: useMemo to compute the filtered photo list
-  // Only re-runs when either `photos` or `searchTerm` changes.
-  // Toggling favourites will NOT re-filter the array.
+  // 4. useMemo computes the filtered photo collection based on author name
+  // Prevents re-running filter computations when unrelated state (such as favourites) changes
   const filteredPhotos = useMemo(() => {
-    const trimmed = searchTerm.trim().toLowerCase();
-    if (!trimmed) {
+    const query = searchTerm.trim().toLowerCase();
+    if (!query) {
       return photos;
     }
     return photos.filter((photo) =>
-      photo.author.toLowerCase().includes(trimmed)
+      photo.author.toLowerCase().includes(query)
     );
   }, [photos, searchTerm]);
 
   return (
-    <main className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
-      {/* Header Section */}
-      <header className="text-center mb-8 sm:mb-10">
-        <div className="inline-flex items-center gap-2 px-3 py-1 bg-indigo-50 text-indigo-700 text-xs font-semibold rounded-full uppercase tracking-wider mb-3">
-          Celebrare Frontend Assignment
-        </div>
-        <h1 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold text-slate-900 tracking-tight">
+    <section className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 sm:py-16">
+      {/* 1. Gallery Header */}
+      <header className="text-center mb-8 sm:mb-12">
+        <h1 className="text-2xl sm:text-3xl font-semibold tracking-tight text-stone-900">
           Photo Gallery
         </h1>
-        <p className="mt-2 text-sm sm:text-base text-slate-600 max-w-2xl mx-auto">
-          Explore curated photos from Picsum, search by author, and save your favourites.
+        <p className="mt-1.5 text-sm text-stone-500 max-w-md mx-auto">
+          A curated collection of thirty photographs from around the world.
         </p>
-
-        {/* Favourites count summary badge */}
-        {!loading && !error && (
-          <div className="mt-4 flex items-center justify-center gap-2 text-xs sm:text-sm text-slate-500">
-            <span>Total: <strong className="text-slate-800">{photos.length}</strong> photos</span>
-            <span>•</span>
-            <span className="flex items-center gap-1">
-              <svg className="w-4 h-4 text-rose-500 fill-rose-500" viewBox="0 0 24 24">
-                <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
-              </svg>
-              <strong className="text-slate-800">{favourites.length}</strong> favourites saved
-            </span>
-          </div>
-        )}
       </header>
 
-      {/* Requirement 4: Search input at top */}
-      <SearchBar
-        searchTerm={searchTerm}
-        onSearchChange={handleSearchChange}
-        onClear={handleClearSearch}
-      />
+      {/* 2. Search Section */}
+      <div className="mb-6">
+        <SearchBar
+          searchTerm={searchTerm}
+          onSearchChange={handleSearchChange}
+          onClear={handleClearSearch}
+        />
+      </div>
 
-      {/* Requirement 2: Loading State */}
+      {/* 3. Gallery Information (Live photo count) */}
+      {!loading && !error && photos.length > 0 && (
+        <div className="flex items-center justify-between text-xs text-stone-400 mb-6 px-1 border-b border-stone-200/60 pb-3">
+          <p>
+            {searchTerm.trim() ? (
+              <>
+                Showing <span className="font-medium text-stone-700">{filteredPhotos.length}</span> of{' '}
+                <span className="font-medium text-stone-700">{photos.length}</span> photographs
+              </>
+            ) : (
+              <>
+                Showing all <span className="font-medium text-stone-700">{photos.length}</span> photographs
+              </>
+            )}
+          </p>
+        </div>
+      )}
+
+      {/* Loading State */}
       {loading && <LoadingSpinner />}
 
-      {/* Requirement 2: Error State */}
-      {!loading && error && <ErrorMessage error={error} onRetry={refetch} />}
+      {/* Error State */}
+      {!loading && error && <ErrorMessage error={error} />}
 
-      {/* Requirement 3: Responsive Grid (Desktop 4, Tablet 2, Mobile 1) */}
+      {/* 4. Responsive Photo Grid (Desktop: 4, Tablet: 2, Mobile: 1) */}
       {!loading && !error && (
         <>
           {filteredPhotos.length > 0 ? (
@@ -129,46 +132,31 @@ export default function Gallery() {
                 <PhotoCard
                   key={photo.id}
                   photo={photo}
-                  isFavourite={favourites.includes(photo.id)}
+                  isFavourite={favourites.includes(String(photo.id))}
                   onToggleFavourite={handleToggleFavourite}
                 />
               ))}
             </div>
           ) : (
-            /* Search empty state */
-            <div className="text-center py-16 bg-white rounded-2xl border border-dashed border-slate-200 p-8 max-w-lg mx-auto">
-              <div className="w-12 h-12 mx-auto mb-3 text-slate-400 bg-slate-100 rounded-full flex items-center justify-center">
-                <svg
-                  className="w-6 h-6"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-                  />
-                </svg>
-              </div>
-              <h3 className="text-base font-semibold text-slate-800">
-                No matching photos found
-              </h3>
-              <p className="mt-1 text-sm text-slate-500">
-                No photos found matching &ldquo;{searchTerm}&rdquo;. Try another author name.
+            /* Restrained Empty State */
+            <div className="text-center py-16 px-4 bg-white rounded-xl border border-stone-200/80 max-w-md mx-auto shadow-2xs">
+              <p className="text-sm font-medium text-stone-800">
+                No photographers found
+              </p>
+              <p className="mt-1 text-xs text-stone-500">
+                No matching photos found for &ldquo;{searchTerm}&rdquo;.
               </p>
               <button
                 type="button"
                 onClick={handleClearSearch}
-                className="mt-4 inline-flex items-center px-4 py-2 text-sm font-medium text-indigo-600 bg-indigo-50 hover:bg-indigo-100 rounded-lg transition-colors cursor-pointer"
+                className="mt-4 text-xs font-medium text-stone-700 underline underline-offset-4 hover:text-stone-900 cursor-pointer"
               >
-                Clear Search
+                Clear search query
               </button>
             </div>
           )}
         </>
       )}
-    </main>
+    </section>
   );
 }

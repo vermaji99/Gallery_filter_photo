@@ -1,33 +1,48 @@
 import React, { useState } from 'react';
 
 /**
+ * Derives a performant, high-DPI 4:3 thumbnail URL from the photo's Picsum URL.
+ * Preserves the photo's exact identity and avoids downloading multi-megabyte originals.
+ */
+function getThumbnailUrl(photo, width = 800, height = 600) {
+  if (photo?.download_url) {
+    return photo.download_url.replace(/\/\d+\/\d+$/, `/${width}/${height}`);
+  }
+  return `https://picsum.photos/id/${photo.id}/${width}/${height}`;
+}
+
+/**
  * PhotoCard Component
  *
- * Displays:
- * 1. Photo (optimized thumbnail from Picsum with lazy loading)
- * 2. Author name
- * 3. Heart icon button (toggles favourite status)
+ * Demonstrates:
+ * - 4:3 Aspect ratio image container
+ * - Graceful loading and error states
+ * - Accessible, keyboard-operable heart toggle with focus-visible ring
+ * - Pure SVG heart icon (active: refined rose, inactive: muted slate/stone)
+ * - Restrained editorial styling
  */
 const PhotoCard = React.memo(function PhotoCard({
   photo,
   isFavourite,
   onToggleFavourite,
 }) {
-  const [imageLoaded, setImageLoaded] = useState(false);
-  const [imageError, setImageError] = useState(false);
+  const [isLoaded, setIsLoaded] = useState(false);
+  const [hasError, setHasError] = useState(false);
 
-  // Use Picsum 600x400 endpoint for fast, consistent aspect-ratio thumbnail loading
-  const imageUrl = `https://picsum.photos/id/${photo.id}/600/400`;
+  const thumbnailUrl = getThumbnailUrl(photo, 800, 600);
 
   return (
-    <article className="group bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 border border-slate-100 flex flex-col">
-      {/* Photo Container */}
-      <div className="relative aspect-[4/3] w-full bg-slate-100 overflow-hidden">
-        {/* Skeleton placeholder while image loads */}
-        {!imageLoaded && !imageError && (
-          <div className="absolute inset-0 bg-slate-200 animate-pulse flex items-center justify-center text-slate-400">
+    <article className="group bg-white rounded-xl border border-stone-200/80 shadow-xs hover:shadow-md transition-shadow duration-300 overflow-hidden flex flex-col">
+      {/* 4:3 Image Container */}
+      <div className="relative aspect-[4/3] w-full bg-stone-100 overflow-hidden">
+        {/* Subtle skeleton loader while image loads */}
+        {!isLoaded && !hasError && (
+          <div
+            className="absolute inset-0 bg-stone-200/70 animate-pulse flex items-center justify-center text-stone-400"
+            aria-hidden="true"
+          >
             <svg
-              className="w-8 h-8 opacity-40"
+              className="w-6 h-6 opacity-30"
               fill="none"
               viewBox="0 0 24 24"
               stroke="currentColor"
@@ -42,22 +57,25 @@ const PhotoCard = React.memo(function PhotoCard({
           </div>
         )}
 
-        {/* Actual Image */}
-        {!imageError ? (
+        {/* Photo Image */}
+        {!hasError ? (
           <img
-            src={imageUrl}
-            alt={`Photo by ${photo.author}`}
+            src={thumbnailUrl}
+            alt={`Photograph by ${photo.author}`}
             loading="lazy"
-            onLoad={() => setImageLoaded(true)}
-            onError={() => setImageError(true)}
-            className={`w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 ${
-              imageLoaded ? 'opacity-100' : 'opacity-0'
+            onLoad={() => setIsLoaded(true)}
+            onError={() => setHasError(true)}
+            className={`w-full h-full object-cover transition-all duration-500 ease-out group-hover:scale-105 ${
+              isLoaded ? 'opacity-100' : 'opacity-0'
             }`}
           />
         ) : (
-          <div className="w-full h-full flex flex-col items-center justify-center text-slate-400 bg-slate-100 p-4 text-center">
+          <div
+            className="w-full h-full flex flex-col items-center justify-center text-stone-400 p-4 text-center bg-stone-100"
+            aria-label="Image could not be loaded"
+          >
             <svg
-              className="w-8 h-8 mb-1 text-slate-300"
+              className="w-6 h-6 mb-1 text-stone-300"
               fill="none"
               viewBox="0 0 24 24"
               stroke="currentColor"
@@ -69,79 +87,51 @@ const PhotoCard = React.memo(function PhotoCard({
                 d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
               />
             </svg>
-            <span className="text-xs">Image unavailable</span>
+            <span className="text-xs text-stone-400">Unavailable</span>
           </div>
         )}
-
-        {/* Quick favourite button floating overlay on top right */}
-        <div className="absolute top-2.5 right-2.5 z-10">
-          <button
-            type="button"
-            onClick={() => onToggleFavourite(photo.id)}
-            aria-label={
-              isFavourite
-                ? `Remove ${photo.author}'s photo from favourites`
-                : `Add ${photo.author}'s photo to favourites`
-            }
-            className={`p-2 rounded-full backdrop-blur-md transition-all duration-200 cursor-pointer shadow-sm ${
-              isFavourite
-                ? 'bg-white/90 text-rose-500 scale-105'
-                : 'bg-black/30 text-white hover:bg-white/90 hover:text-rose-500 hover:scale-105'
-            }`}
-          >
-            <svg
-              className="w-5 h-5 transition-transform active:scale-125"
-              viewBox="0 0 24 24"
-              fill={isFavourite ? 'currentColor' : 'none'}
-              stroke="currentColor"
-              strokeWidth={isFavourite ? '0' : '2'}
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
-              <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
-            </svg>
-          </button>
-        </div>
       </div>
 
-      {/* Card Footer: Author Name & Favourite Status */}
-      <div className="p-4 flex items-center justify-between gap-2">
+      {/* Card Caption & Favourite Action */}
+      <div className="p-3.5 flex items-center justify-between gap-3 bg-white border-t border-stone-100">
         <div className="min-w-0">
-          <p className="text-xs uppercase tracking-wider text-slate-400 font-semibold">
+          <p className="text-[11px] uppercase tracking-wider text-stone-400 font-medium">
             Photographer
           </p>
-          <h4
-            className="text-sm font-semibold text-slate-800 truncate"
+          <h3
+            className="text-sm font-medium text-stone-900 truncate"
             title={photo.author}
           >
             {photo.author}
-          </h4>
+          </h3>
         </div>
 
-        {/* Bottom heart icon button (always visible and easy to tap) */}
+        {/* Heart-shaped favourite toggle button */}
         <button
           type="button"
           onClick={() => onToggleFavourite(photo.id)}
           aria-label={
             isFavourite
               ? `Remove ${photo.author}'s photo from favourites`
-              : `Add ${photo.author}'s photo to favourites`
+              : `Save ${photo.author}'s photo to favourites`
           }
-          className={`p-1.5 rounded-lg transition-colors cursor-pointer ${
+          aria-pressed={isFavourite}
+          className={`p-2 rounded-lg transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-stone-900 focus-visible:ring-offset-1 ${
             isFavourite
-              ? 'text-rose-500 hover:bg-rose-50'
-              : 'text-slate-400 hover:text-rose-500 hover:bg-slate-50'
+              ? 'text-rose-600 bg-rose-50/70 hover:bg-rose-100/70'
+              : 'text-stone-400 hover:text-stone-700 hover:bg-stone-100'
           }`}
           title={isFavourite ? 'Favourited' : 'Add to favourites'}
         >
           <svg
-            className="w-5 h-5"
+            className="w-5 h-5 transition-transform duration-150 active:scale-125"
             viewBox="0 0 24 24"
             fill={isFavourite ? 'currentColor' : 'none'}
             stroke="currentColor"
-            strokeWidth={isFavourite ? '0' : '2'}
+            strokeWidth={isFavourite ? '0' : '1.75'}
             strokeLinecap="round"
             strokeLinejoin="round"
+            aria-hidden="true"
           >
             <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
           </svg>
